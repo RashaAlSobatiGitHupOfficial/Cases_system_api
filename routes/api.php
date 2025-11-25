@@ -18,6 +18,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::apiResource('employees', EmployeeController::class);
+Route::get('roles/paginations', [RoleController::class,'indexPagination']);
     Route::apiResource('roles', RoleController::class);
     Route::get('permissions/all_permissions', [PermissionController::class,'loadAll']);
     Route::apiResource('permissions', PermissionController::class);

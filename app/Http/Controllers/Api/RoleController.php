@@ -11,6 +11,15 @@ class RoleController extends Controller
     
     public function index(Request $request)
 {
+
+    $roles = Role::all();
+
+    return response()->json(['roles'=>$roles]);
+}
+
+
+    public function indexPagination(Request $request)
+{
      $search = $request->query('search');
 
     $roles = Role::with('permissions')
@@ -22,6 +31,7 @@ class RoleController extends Controller
 
     return response()->json($roles);
 }
+
 
     public function store(Request $request)
     {
