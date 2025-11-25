@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CaseController;
 use App\Http\Controllers\Api\CaseEmployeeController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\PermissionCategoryController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
@@ -18,10 +19,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::apiResource('employees', EmployeeController::class);
-Route::get('roles/paginations', [RoleController::class,'indexPagination']);
+    Route::get('roles/paginations', [RoleController::class,'indexPagination']);
     Route::apiResource('roles', RoleController::class);
-    Route::get('permissions/all_permissions', [PermissionController::class,'loadAll']);
-    Route::apiResource('permissions', PermissionController::class);
+    // Route::get('permissions/all_permissions', [PermissionController::class,'loadAll']);
+    // Route::apiResource('permissions', PermissionController::class);
     Route::apiResource('clients', ClientController::class);
     Route::apiResource('cases', CaseController::class);
 
@@ -30,4 +31,9 @@ Route::get('roles/paginations', [RoleController::class,'indexPagination']);
       
     Route::get('/case-employees', [CaseEmployeeController::class, 'index'])->name('caseEmployees.index');
     Route::post('/case-employees', [CaseEmployeeController::class, 'store'])->name('caseEmployees.store');
+
+    Route::get('/permission-categories/loadAll', [PermissionCategoryController::class, 'loadAll']);
+    Route::apiResource('permission-categories', PermissionCategoryController::class);
+    Route::post('/permissions', [PermissionController::class, 'store']);
+
 });

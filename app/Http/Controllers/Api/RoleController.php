@@ -19,18 +19,19 @@ class RoleController extends Controller
 
 
     public function indexPagination(Request $request)
-{
-     $search = $request->query('search');
+    {
+        $search = $request->query('search');
 
-    $roles = Role::with('permissions')
-        ->when($search, function ($query) use ($search) {
-            $query->where('role_name', 'LIKE', "%{$search}%");
-        })
-        ->orderBy('id', 'DESC')
-        ->paginate(5);
+        $roles = Role::with('permissions.category')
+            ->when($search, function ($query) use ($search) {
+                $query->where('role_name', 'LIKE', "%{$search}%");
+            })
+            ->orderBy('id', 'DESC')
+            ->paginate(5);
 
-    return response()->json($roles);
-}
+        return response()->json($roles);
+    }
+
 
 
     public function store(Request $request)
