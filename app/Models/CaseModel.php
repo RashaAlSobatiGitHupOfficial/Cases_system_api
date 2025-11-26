@@ -20,7 +20,7 @@ class CaseModel extends Model
         'type',
         'way_entry',
         'status',
-        'priority',
+        'priority_id',
     ];
 
     // Ensure default values if not passed
@@ -50,5 +50,9 @@ class CaseModel extends Model
     public function employees()
     {
         return $this->belongsToMany(Employee::class, 'case_employees','case_id','employee_id');
+    }
+    public function priority()
+    {
+        return $this->belongsTo(Priority::class);
     }
 }
