@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     Route::apiResource('priorities', PriorityController::class);
+    Route::put('/account/update', [UserController::class, 'updateAccount']);
 
 
 });

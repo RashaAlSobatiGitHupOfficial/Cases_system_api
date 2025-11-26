@@ -8,12 +8,17 @@ use Illuminate\Http\Request;
 
 class PriorityController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
+        $search = $request->query('search');
 
-        $priorities = Priority::all();
+        $priorities = Priority::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('priority_name', 'LIKE', "%{$search}%");
+            })
+            ->get();
 
-        return response()->json(['priorities'=>$priorities]);
+        return response()->json($priorities);
     }
 
     public function store(Request $request)

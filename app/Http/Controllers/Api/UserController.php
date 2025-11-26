@@ -132,4 +132,38 @@ class UserController extends Controller
             'message' => 'User deleted successfully'
         ]);
     }
+
+
+
+     public function updateAccount(Request $request)
+    {
+        $user = $request->user(); 
+
+        $validated = $request->validate([
+            'username' => 'sometimes|string|max:255|unique:users,username,' . $user->id,
+            'email'    => 'sometimes|email|max:255|unique:employees,email,' . $user->employee->id,
+            'password' => 'sometimes|min:6'
+        ]);
+
+        if (isset($validated['username'])) {
+            $user->username = $validated['username'];
+        }
+
+        if (isset($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        if (isset($validated['email'])) {
+            $employee = $user->employee;
+            $employee->email = $validated['email'];
+            $employee->save();
+        }
+
+        return response()->json([
+            'message' => 'Account updated successfully',
+            'user'    => $user->load('employee')
+        ]);
+    }
 }
