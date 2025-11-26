@@ -10,4 +10,10 @@ class Priority extends Model
     use HasFactory;
 
     protected $fillable = ['priority_name', 'delay_time'];
+
+
+    public function cases()
+    {
+        return $this->hasMany(CaseModel::class);
+    }
 }

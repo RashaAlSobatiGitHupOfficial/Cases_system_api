@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('cases', function (Blueprint $table) {
             $table->id();
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->foreignId('priority_id')->nullable()->constrained('priorities')->onDelete('set null');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('title');
             $table->string('description');
             $table->text('attachment')->nullable();
@@ -21,10 +23,9 @@ return new class extends Migration
             $table->enum('type', ['technical', 'service_request', 'delay', 'miscommunication', 'enquery', 'others'])->default('enquery');
             $table->enum('way_entry', ['email', 'manual'])->default('email');
             $table->enum('status', ['opened', 'assigned', 'in_progress', 'reassigned', 'closed'])->default('opened');
-            $table->enum('priority', ['high', 'middle', 'low', 'normal'])->default('normal');
             $table->timestamps();
         });
-    }
+    }   
 
     /**
      * Reverse the migrations.
