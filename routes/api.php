@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\PermissionCategoryController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PriorityController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -35,5 +36,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/permission-categories/loadAll', [PermissionCategoryController::class, 'loadAll']);
     Route::apiResource('permission-categories', PermissionCategoryController::class);
     Route::post('/permissions', [PermissionController::class, 'store']);
+
+
+    Route::apiResource('priorities', PriorityController::class);
+
 
 });
