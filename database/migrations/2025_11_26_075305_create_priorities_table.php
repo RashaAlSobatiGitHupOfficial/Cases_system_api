@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('priorities', function (Blueprint $table) {
             $table->id();
             $table->string('priority_name');
-            $table->tinyInteger(4);
+            $table->tinyInteger('delay_time');
             $table->timestamps();
         });
     }
