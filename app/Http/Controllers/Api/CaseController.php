@@ -3,95 +3,120 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CaseEmployee;
 use App\Models\CaseModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class CaseController extends Controller
+
 {   public function index(Request $request)
-{
-    $query = CaseModel::with(['client', 'employees']);
+    {
+        $query = CaseModel::with(['client', 'employees','priority']);
 
-    // Search (title / description)
-    if ($request->search) {
-        $query->where(function($q) use ($request) {
-            $q->where('title', 'LIKE', "%{$request->search}%")
-              ->orWhere('description', 'LIKE', "%{$request->search}%");
-        });
+        // Search (title / description)
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+
+        // Status filter
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->way_entry) {
+            $query->where('way_entry', $request->way_entry);
+        }
+
+        // Type filter
+        if ($request->type) {
+            $query->where('type', $request->type);
+        }
+
+        // Customer filter
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        // Date Range
+        if ($request->date_from) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->date_to) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->priority) { $query->whereHas('priority', function ($q) use ($request) { $q->where('priority_name', 'LIKE', '%' . $request->priority . '%'); }); }
+
+        return $query->orderBy('created_at', 'desc')->paginate(5);
     }
 
-    // Status filter
-    if ($request->status) {
-        $query->where('status', $request->status);
-    }
-
-    // Type filter
-    if ($request->type) {
-        $query->where('type', $request->type);
-    }
-
-    // Customer filter
-    if ($request->client_id) {
-        $query->where('client_id', $request->client_id);
-    }
-
-    // Date Range
-    if ($request->date_from) {
-        $query->whereDate('created_at', '>=', $request->date_from);
-    }
-
-    if ($request->date_to) {
-        $query->whereDate('created_at', '<=', $request->date_to);
-    }
-
-    return $query->orderBy('created_at', 'desc')->paginate(10);
-}
 
 
-
-    public function store(Request $request)
+  public function store(Request $request)
     {
         $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'title' => 'required|string|max:255',
+            'client_id'   => 'required|exists:clients,id',
+            'priority_id' => 'nullable|exists:priorities,id',
+            'title'       => 'required|string|max:255',
             'description' => 'required|string',
-            'attachment' => 'nullable|file',
-            'note' => 'nullable|string',
-            'type' => 'nullable|in:technical,service_request,delay,miscommunication,enquery,others',
-            'way_entry' => 'nullable|in:email,manual',
-            'status' => 'nullable|in:opened,assigned,in_progress,reassigned,closed',
-            'priority' => 'nullable|in:high,middle,low,normal',
+            'attachment'  => 'nullable|file',
+            'note'        => 'nullable|string',
+            'type'        => 'nullable|in:technical,service_request,delay,miscommunication,enquery,others',
+            'way_entry'   => 'nullable|in:email,manual',
+            'status'      => 'nullable|in:opened,assigned,in_progress,reassigned,closed',
+
+            
+            'employee_ids' => 'nullable|array',
+            'employee_ids.*' => 'exists:employees,id',
         ]);
 
         $attachmentPath = null;
-
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('cases', 'public');
         }
 
-        // الأساسيات اللي لازم دايمًا تنحفظ
+        $user = $request->user();
+
         $data = [
             'client_id'   => $request->client_id,
+            'priority_id' => $request->priority_id,
+            'user_id'     => $user->id,
             'title'       => $request->title,
             'description' => $request->description,
             'attachment'  => $attachmentPath,
             'note'        => $request->note,
         ];
 
-        // الحقول الاختيارية: لو ما انرسلت، ما نضيفها → الـ DB يستخدم default
-        foreach (['type', 'way_entry', 'status', 'priority'] as $field) {
-            if ($request->filled($field)) { // filled = مو null ومو ""
+        foreach (['type', 'way_entry', 'status'] as $field) {
+            if ($request->filled($field)) {
                 $data[$field] = $request->$field;
             }
         }
 
         $case = CaseModel::create($data);
 
+      
+        if ($request->filled('employee_ids')) {
+            foreach ($request->employee_ids as $empId) {
+                CaseEmployee::create([
+                    'case_id'     => $case->id,
+                    'employee_id' => $empId,
+                    'status'      => 'assigned'
+                ]);
+            }
+        }
+
         return response()->json([
             'message' => 'Case created successfully',
             'case'    => $case
         ], 201);
     }
+
 
 
     public function show(CaseModel $case)

@@ -21,6 +21,7 @@ class CaseModel extends Model
         'way_entry',
         'status',
         'priority_id',
+        'user_id'
     ];
 
     // Ensure default values if not passed
@@ -28,7 +29,6 @@ class CaseModel extends Model
         'type' => 'enquery',
         'way_entry' => 'email',
         'status' => 'opened',
-        'priority' => 'normal',
     ];
 
     public function client()
@@ -51,6 +51,7 @@ class CaseModel extends Model
     {
         return $this->belongsToMany(Employee::class, 'case_employees','case_id','employee_id');
     }
+
     public function priority()
     {
         return $this->belongsTo(Priority::class);
