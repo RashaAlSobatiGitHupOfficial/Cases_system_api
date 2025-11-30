@@ -10,50 +10,58 @@ use Illuminate\Support\Facades\Storage;
 
 class CaseController extends Controller
 
-{   public function index(Request $request)
-    {
-        $query = CaseModel::with(['client', 'employees','priority']);
+{  
+    public function index(Request $request)
+{
+    $query = CaseModel::with(['client', 'employees', 'priority']);
 
-        // Search (title / description)
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('title', 'LIKE', "%{$request->search}%")
-                ->orWhere('description', 'LIKE', "%{$request->search}%");
-            });
-        }
-
-        // Status filter
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->way_entry) {
-            $query->where('way_entry', $request->way_entry);
-        }
-
-        // Type filter
-        if ($request->type) {
-            $query->where('type', $request->type);
-        }
-
-        // Customer filter
-        if ($request->client_id) {
-            $query->where('client_id', $request->client_id);
-        }
-
-        // Date Range
-        if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        if ($request->priority) { $query->whereHas('priority', function ($q) use ($request) { $q->where('priority_name', 'LIKE', '%' . $request->priority . '%'); }); }
-
-        return $query->orderBy('created_at', 'desc')->paginate(5);
+    if ($request->search) {
+        $query->where(function($q) use ($request) {
+            $q->where('title', 'LIKE', "%{$request->search}%")
+              ->orWhere('description', 'LIKE', "%{$request->search}%");
+        });
     }
+
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    if ($request->filled('way_entry')) {
+        $query->where('way_entry', $request->way_entry);
+    }
+
+    if ($request->filled('type')) {
+        $query->where('type', $request->type);
+    }
+
+    if ($request->filled('client_id')) {
+        $query->where('client_id', $request->client_id);
+    }
+
+    if ($request->filled('date_from')) {
+        $query->whereDate('created_at', '>=', $request->date_from);
+    }
+
+    if ($request->filled('date_to')) {
+        $query->whereDate('created_at', '<=', $request->date_to);
+    }
+
+    if ($request->filled('priority')) {
+        $query->whereHas('priority', function ($q) use ($request) {
+            $q->where('priority_name', 'LIKE', '%' . trim($request->priority) . '%');
+        });
+    }
+
+    if ($request->filled('sort_by')) {
+        $direction = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+        $query->orderBy($request->sort_by, $direction);
+    } else {
+        $query->orderBy('created_at', 'desc');
+    }
+
+    return $query->paginate(10);
+}
+
 
 
 
@@ -124,35 +132,61 @@ class CaseController extends Controller
         return response()->json(['case' => $case->load('client')]);
     }
 
-    public function update(Request $request, CaseModel $case)
-    {
-        $request->validate([
-            'client_id'    => 'sometimes|exists:clients,id',
-            'title'        => 'sometimes|string|max:255',
-            'description'  => 'sometimes|string',
-            'attachment'   => 'nullable|file|max:5120',
-            'note'         => 'nullable|string',
-            'type'         => 'sometimes|in:technical,service_request,delay,miscommunication,enquery,others',
-            'way_entry'    => 'sometimes|in:email,manual',
-            'status'       => 'sometimes|in:opened,assigned,in_progress,reassigned,closed',
-            'priority'     => 'sometimes|in:high,middle,low,normal',
-        ]);
+public function update(Request $request, CaseModel $case)
+{
+    $validated = $request->validate([
+        'client_id'     => 'required|exists:clients,id',
+        'priority_id'   => 'required|exists:priorities,id',
+        'title'         => 'required|string|max:255',
+        'description'   => 'required|string',
+        'note'          => 'nullable|string',
+        'type'          => 'required|in:technical,service_request,delay,miscommunication,enquery,others',
+        'way_entry'     => 'nullable|in:email,manual',
+        'status'        => 'nullable|in:opened,assigned,in_progress,reassigned,closed',
 
-        // Handle attachment update
-        if ($request->hasFile('attachment')) {
-            if ($case->attachment && Storage::disk('public')->exists($case->attachment)) {
-                Storage::disk('public')->delete($case->attachment);
-            }
-            $case->attachment = $request->file('attachment')->store('cases', 'public');
+        'employee_ids'  => 'array',
+        'employee_ids.*'=> 'exists:employees,id',
+
+        'attachment'    => 'nullable|file|max:5120',
+    ]);
+
+    // Update main fields
+    $case->client_id    = $validated['client_id'];
+    $case->priority_id  = $validated['priority_id'];
+    $case->title        = $validated['title'];
+    $case->description  = $validated['description'];
+    $case->note         = $validated['note'] ?? $case->note;
+    $case->type         = $validated['type'];
+    $case->way_entry    = $validated['way_entry'] ?? $case->way_entry;
+    $case->status       = $validated['status'] ?? $case->status;
+
+    // Handle attachment
+    if ($request->hasFile('attachment')) {
+        if ($case->attachment && Storage::disk('public')->exists($case->attachment)) {
+            Storage::disk('public')->delete($case->attachment);
         }
 
-        $case->update($request->except('attachment'));
-
-        return response()->json([
-            'message' => 'Case updated successfully',
-            'case'    => $case
-        ]);
+        $path = $request->file('attachment')->store('cases', 'public');
+        $case->attachment = $path;
     }
+
+    $case->save();
+
+    // Sync employees
+    if ($request->has('employee_ids')) {
+        $case->employees()->sync($validated['employee_ids']);
+    }
+
+    // Return with relationships
+    $case->load(['client', 'employees', 'priority']);
+
+    return response()->json([
+        'message' => 'Case updated successfully',
+        'data'    => $case
+    ]);
+}
+
+
 
     public function destroy(CaseModel $case)
     {
