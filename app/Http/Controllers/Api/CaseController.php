@@ -186,6 +186,26 @@ public function update(Request $request, CaseModel $case)
     ]);
 }
 
+    public function assignEmployees(Request $request, CaseModel $case)
+    {
+        $validated = $request->validate([
+            'employee_ids' => 'required|array|min:1',
+            'employee_ids.*' => 'exists:employees,id',
+        ]);
+
+        // Assign (sync ensures clean pivot)
+        $case->employees()->sync($validated['employee_ids']);
+
+        // Auto-change status
+        if ($case->status === 'opened') {
+            $case->update(['status' => 'assigned']);
+        }
+
+        return response()->json([
+            'message' => 'Employees assigned successfully',
+            'case' => $case->load('employees'),
+        ]);
+    }
 
 
     public function destroy(CaseModel $case)

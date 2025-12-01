@@ -41,5 +41,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('priorities', PriorityController::class);
     Route::put('/account/update', [UserController::class, 'updateAccount']);
 
+    Route::post('/cases/{case}/assign', [CaseController::class, 'assignEmployees']);
 
 });
