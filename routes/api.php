@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CaseWorkflowController;
+
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -55,5 +57,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/completion-rate', [DashboardController::class, 'completionRate']);
 
 });
+    Route::get('/cases', [CaseController::class, 'index']);
+
+    Route::post('/cases/{case}/assign-to-me', [CaseWorkflowController::class, 'assignToMe']);
+
+    Route::post('/cases/{case}/accept', [CaseWorkflowController::class, 'accept']);
+
+    Route::post('/cases/{case}/reassign', [CaseWorkflowController::class, 'reassign']);
+
+    Route::post('/cases/{case}/remove-employee', [CaseWorkflowController::class, 'removeEmployee']);
 
 });

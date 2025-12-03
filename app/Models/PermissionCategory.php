@@ -9,7 +9,7 @@ class PermissionCategory extends Model
 {
      use HasFactory;
 
-    protected $table = 'permissions_category';
+    protected $table = 'permission_categories';
 
     protected $fillable = [
         'category_name',

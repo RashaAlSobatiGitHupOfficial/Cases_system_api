@@ -51,6 +51,20 @@ class CaseController extends Controller
             $q->where('priority_name', 'LIKE', '%' . trim($request->priority) . '%');
         });
     }
+    // TAB FILTERS
+if ($request->tab === 'mine') {
+    $emp = $request->user()->employee->id;
+
+    $query->whereHas('employees', function($q) use ($emp) {
+        $q->where('employee_id', $emp);
+    });
+}
+
+if ($request->tab === 'unassigned') {
+    $query->whereDoesntHave('employees');
+}
+
+
 
     if ($request->filled('sort_by')) {
         $direction = $request->sort_direction === 'desc' ? 'desc' : 'asc';
@@ -120,7 +134,9 @@ class CaseController extends Controller
                 CaseEmployee::create([
                     'case_id'     => $case->id,
                     'employee_id' => $empId,
-                    'status'      => 'assigned'
+                    'action'      => 'assigned',
+                    'assigned_by' => $request->user()->id,
+
                 ]);
             }
         }
@@ -237,4 +253,32 @@ public function update(Request $request, CaseModel $case)
 
         return response()->json(['message' => 'Case deleted successfully']);
     }
+public function accept($id)
+{
+    $case = CaseModel::findOrFail($id);
+
+    // check permission
+    $this->authorize('accept', $case);
+
+    // change status
+    $oldStatus = $case->status;
+    $case->status = 'in_progress';
+    $case->save();
+
+    // log
+    CaseLog::create([
+        'case_id' => $case->id,
+        'user_id' => auth()->id(),
+        'action'  => 'case_accepted',
+        'old_value' => $oldStatus,
+        'new_value' => 'in_progress',
+    ]);
+
+    return response()->json([
+        'message' => 'Case accepted and now in progress.',
+        'case' => $case
+    ]);
+}
+
+
 }

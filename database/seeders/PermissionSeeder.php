@@ -68,14 +68,20 @@ class PermissionSeeder extends Seeder
                 ]
             ],
             [
-                'category_name' => 'supports',
+                'category_name' => 'cases',
                 'permissions' => [
-                    'add support',
-                    'edit support',
-                    'delete support',
-                    'view support'
+                    'cases.view_all',
+                    'cases.view_assigned',
+                    'cases.view_unassigned',
+                    'cases.assign',
+                    'cases.accept',
+                    'cases.reassign',
+                    'cases.remove_employee',
+                    'cases.edit',
+                    'cases.delete'
                 ]
             ],
+
             [
                 'category_name' => 'dashboard',
                 'permissions' => [

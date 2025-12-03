@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('permission_name');
                $table->foreignId('category_id')
                 ->nullable()
-                ->constrained('permissions_category')  
+                ->constrained('permission_categories')  
                 ->onDelete('cascade');
 
             $table->timestamps();
