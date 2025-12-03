@@ -30,8 +30,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('users', UserController::class);
     Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
       
-    Route::get('/case-employees', [CaseEmployeeController::class, 'index'])->name('caseEmployees.index');
-    Route::post('/case-employees', [CaseEmployeeController::class, 'store'])->name('caseEmployees.store');
+    // Route::get('/case-employees', [CaseEmployeeController::class, 'index'])->name('caseEmployees.index');
+    // Route::post('/case-employees', [CaseEmployeeController::class, 'store'])->name('caseEmployees.store');
 
     Route::get('/permission-categories/loadAll', [PermissionCategoryController::class, 'loadAll']);
     Route::apiResource('permission-categories', PermissionCategoryController::class);
