@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CaseController;
 use App\Http\Controllers\Api\CaseEmployeeController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\PermissionCategoryController;
 use App\Http\Controllers\Api\PermissionController;
@@ -42,5 +43,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/account/update', [UserController::class, 'updateAccount']);
 
     Route::post('/cases/{case}/assign', [CaseController::class, 'assignEmployees']);
+
+    Route::prefix('dashboard')->group(function () {
+
+    Route::get('/cards', [DashboardController::class, 'cards']);
+    Route::get('/cases-per-day', [DashboardController::class, 'casesPerDay']);
+    Route::get('/cases-by-status', [DashboardController::class, 'casesByStatus']);
+    Route::get('/cases-by-priority', [DashboardController::class, 'casesByPriority']);
+    Route::get('/cases-by-type', [DashboardController::class, 'casesByType']);
+    Route::get('/top-clients', [DashboardController::class, 'topClients']);
+    Route::get('/completion-rate', [DashboardController::class, 'completionRate']);
+
+});
 
 });
