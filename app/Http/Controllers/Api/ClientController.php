@@ -52,24 +52,6 @@ class ClientController extends Controller
     }
 
 
-    // public function search(Request $request)
-    // {
-    //     $search = $request->input('search');
-
-    //     $clients = Client::when($search, function ($query, $search) {
-    //         $query->where('client_name', 'LIKE', "%{$search}%")
-    //             ->orWhere('address', 'LIKE', "%{$search}%")
-    //             ->orWhere('email', 'LIKE', "%{$search}%");
-    //     })
-    //         ->paginate(5)
-    //         ->through(function ($client) {
-    //             $client->logo_url = $client->logo ? asset('storage/' . $client->logo) : null;
-    //             return $client;
-    //         });
-
-    //     return response()->json($clients);
-    // }
-
     public function store(Request $request)
     {
         $request->validate([
