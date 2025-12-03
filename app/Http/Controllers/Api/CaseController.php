@@ -105,6 +105,12 @@ class CaseController extends Controller
                 $data[$field] = $request->$field;
             }
         }
+        if ($request->filled('employee_ids') && count($request->employee_ids) > 0) {
+                $data['status'] = 'assigned';
+            } else {
+                $data['status'] = 'opened';
+            }
+
 
         $case = CaseModel::create($data);
 
@@ -169,6 +175,19 @@ public function update(Request $request, CaseModel $case)
         $path = $request->file('attachment')->store('cases', 'public');
         $case->attachment = $path;
     }
+
+        if ($case->status !== 'closed') {
+
+            if (!isset($validated['employee_ids']) || count($validated['employee_ids']) === 0) {
+                $case->status = 'opened';
+            } else {
+                if ($case->status === 'opened') {
+                    $case->status = 'assigned';
+                }
+            }
+        }
+
+
 
     $case->save();
 
