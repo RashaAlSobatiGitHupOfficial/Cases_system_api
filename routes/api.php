@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('dashboard')->group(function () {
 
     Route::get('/cards', [DashboardController::class, 'cards']);
+
     Route::get('/cases-per-day', [DashboardController::class, 'casesPerDay']);
     Route::get('/cases-by-status', [DashboardController::class, 'casesByStatus']);
     Route::get('/cases-by-priority', [DashboardController::class, 'casesByPriority']);
