@@ -78,7 +78,8 @@ class PermissionSeeder extends Seeder
                     'cases.reassign',
                     'cases.remove_employee',
                     'cases.edit',
-                    'cases.delete'
+                    'cases.delete',
+                    'cases.create'
                 ]
             ],
 
