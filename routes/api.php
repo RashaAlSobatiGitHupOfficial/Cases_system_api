@@ -57,14 +57,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/completion-rate', [DashboardController::class, 'completionRate']);
 
 });
-    Route::get('/cases', [CaseController::class, 'index']);
-
     Route::post('/cases/{case}/assign-to-me', [CaseWorkflowController::class, 'assignToMe']);
-
     Route::post('/cases/{case}/accept', [CaseWorkflowController::class, 'accept']);
-
     Route::post('/cases/{case}/reassign', [CaseWorkflowController::class, 'reassign']);
-
     Route::post('/cases/{case}/remove-employee', [CaseWorkflowController::class, 'removeEmployee']);
+    Route::post('/cases/{case}/close', [CaseWorkflowController::class, 'close']);
+    Route::post('/cases/{case}/update-employees', [CaseWorkflowController::class, 'updateEmployees'
+]);
+
 
 });

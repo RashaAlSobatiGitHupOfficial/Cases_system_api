@@ -7,74 +7,75 @@ use App\Models\CaseEmployee;
 use App\Models\CaseModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\CaseLog;
 
 class CaseController extends Controller
 
 {  
     public function index(Request $request)
-{
-    $query = CaseModel::with(['client', 'employees', 'priority']);
+    {
+        $query = CaseModel::with(['client', 'employees', 'priority']);
 
-    if ($request->search) {
-        $query->where(function($q) use ($request) {
-            $q->where('title', 'LIKE', "%{$request->search}%")
-              ->orWhere('description', 'LIKE', "%{$request->search}%");
-        });
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('way_entry')) {
+            $query->where('way_entry', $request->way_entry);
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('priority')) {
+            $query->whereHas('priority', function ($q) use ($request) {
+                $q->where('priority_name', 'LIKE', '%' . trim($request->priority) . '%');
+            });
+        }
+            // TAB FILTERS
+        if ($request->tab === 'mine') {
+            $emp = $request->user()->employee->id;
+
+            $query->whereHas('employees', function($q) use ($emp) {
+                $q->where('employee_id', $emp);
+            });
+        }
+
+        if ($request->tab === 'unassigned') {
+            $query->whereDoesntHave('employees');
+        }
+
+
+
+        if ($request->filled('sort_by')) {
+            $direction = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+            $query->orderBy($request->sort_by, $direction);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->paginate(10);
     }
-
-    if ($request->filled('status')) {
-        $query->where('status', $request->status);
-    }
-
-    if ($request->filled('way_entry')) {
-        $query->where('way_entry', $request->way_entry);
-    }
-
-    if ($request->filled('type')) {
-        $query->where('type', $request->type);
-    }
-
-    if ($request->filled('client_id')) {
-        $query->where('client_id', $request->client_id);
-    }
-
-    if ($request->filled('date_from')) {
-        $query->whereDate('created_at', '>=', $request->date_from);
-    }
-
-    if ($request->filled('date_to')) {
-        $query->whereDate('created_at', '<=', $request->date_to);
-    }
-
-    if ($request->filled('priority')) {
-        $query->whereHas('priority', function ($q) use ($request) {
-            $q->where('priority_name', 'LIKE', '%' . trim($request->priority) . '%');
-        });
-    }
-    // TAB FILTERS
-if ($request->tab === 'mine') {
-    $emp = $request->user()->employee->id;
-
-    $query->whereHas('employees', function($q) use ($emp) {
-        $q->where('employee_id', $emp);
-    });
-}
-
-if ($request->tab === 'unassigned') {
-    $query->whereDoesntHave('employees');
-}
-
-
-
-    if ($request->filled('sort_by')) {
-        $direction = $request->sort_direction === 'desc' ? 'desc' : 'asc';
-        $query->orderBy($request->sort_by, $direction);
-    } else {
-        $query->orderBy('created_at', 'desc');
-    }
-
-    return $query->paginate(10);
-}
 
 
 
@@ -112,6 +113,7 @@ if ($request->tab === 'unassigned') {
             'description' => $request->description,
             'attachment'  => $attachmentPath,
             'note'        => $request->note,
+            
         ];
 
         foreach (['type', 'way_entry', 'status'] as $field) {
@@ -128,18 +130,36 @@ if ($request->tab === 'unassigned') {
 
         $case = CaseModel::create($data);
 
-      
+    //   $primaryId = $request->primary_employee_id ?? $request->employee_ids[0];
+
         if ($request->filled('employee_ids')) {
+                $isFirst = true;
+
             foreach ($request->employee_ids as $empId) {
                 CaseEmployee::create([
                     'case_id'     => $case->id,
                     'employee_id' => $empId,
                     'action'      => 'assigned',
                     'assigned_by' => $request->user()->id,
+                    // 'is_primary'  => $empId == $primaryId,
+
+                    'is_primary'  => $isFirst, 
+                    'started_at'  => now(),
+                    'ended_at'    => null
+
+
 
                 ]);
+                        $isFirst = false;
+
             }
         }
+        CaseLog::create([
+            'case_id' => $case->id,
+            'user_id' => $request->user()->id,
+            'action'  => 'created',
+            'new_value' => json_encode($case->toArray()),
+        ]);
 
         return response()->json([
             'message' => 'Case created successfully',
@@ -214,7 +234,12 @@ public function update(Request $request, CaseModel $case)
 
     // Return with relationships
     $case->load(['client', 'employees', 'priority']);
-
+        CaseLog::create([
+            'case_id' => $case->id,
+            'user_id' => $request->user()->id,
+            'action'  => 'updated',
+            'new_value' => json_encode($case->toArray())
+        ]);
     return response()->json([
         'message' => 'Case updated successfully',
         'data'    => $case
@@ -253,30 +278,21 @@ public function update(Request $request, CaseModel $case)
 
         return response()->json(['message' => 'Case deleted successfully']);
     }
-public function accept($id)
+    public function adminUpdateEmployees(Request $request, CaseModel $case)
 {
-    $case = CaseModel::findOrFail($id);
+    $this->authorize('editEmployees', $case);
 
-    // check permission
-    $this->authorize('accept', $case);
-
-    // change status
-    $oldStatus = $case->status;
-    $case->status = 'in_progress';
-    $case->save();
-
-    // log
-    CaseLog::create([
-        'case_id' => $case->id,
-        'user_id' => auth()->id(),
-        'action'  => 'case_accepted',
-        'old_value' => $oldStatus,
-        'new_value' => 'in_progress',
+    $validated = $request->validate([
+        'employee_ids' => 'required|array',
+        'employee_ids.*' => 'exists:employees,id',
     ]);
 
+    // Sync employees
+    $case->allEmployees()->sync($validated['employee_ids']);
+
     return response()->json([
-        'message' => 'Case accepted and now in progress.',
-        'case' => $case
+        'message' => 'Employees updated successfully.',
+        'case' => $case->fresh()->load(['employees'])
     ]);
 }
 

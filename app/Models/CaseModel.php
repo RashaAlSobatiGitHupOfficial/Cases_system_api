@@ -10,6 +10,8 @@ class CaseModel extends Model
     use HasFactory;
 
     protected $table = 'cases';
+    protected $appends = ['attachment_url', 'is_mine'];
+
 
     protected $fillable = [
         'client_id',
@@ -36,8 +38,6 @@ class CaseModel extends Model
         return $this->belongsTo(Client::class);
     }
 
-    // Accessor to return full URL
-    protected $appends = ['attachment_url'];
 
     public function getAttachmentUrlAttribute()
     {
@@ -47,13 +47,42 @@ class CaseModel extends Model
     }
 
 
+
+    public function allEmployees()
+    {
+        return $this->belongsToMany(Employee::class, 'case_employees', 'case_id', 'employee_id')
+            ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at']);
+    }
+    // ACTIVE employees only
     public function employees()
     {
-        return $this->belongsToMany(Employee::class, 'case_employees','case_id','employee_id');
+        return $this->allEmployees()->wherePivot('ended_at', null);
     }
+
+    // Accessor for “employees” in JSON response (uses active employees)
+    public function getActiveEmployeesListAttribute()
+    {
+        return $this->activeEmployees()->get();
+    }
+
+
 
     public function priority()
     {
         return $this->belongsTo(Priority::class);
     }
+    public function getIsMineAttribute()
+    {
+        $user = auth()->user();
+
+        if (!$user || !$user->employee) {
+            return false;
+        }
+
+        return $this->employees()
+            ->where('employee_id', $user->employee->id)
+            ->exists();
+    }
+
+
 }

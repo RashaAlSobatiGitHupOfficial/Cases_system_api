@@ -7,54 +7,53 @@ use App\Models\CaseModel;
 
 class CasePolicy
 {
-    public function viewAll(User $user)
+    public function assignToMe(User $user, CaseModel $case)
     {
-        return $user->hasPermission('cases.view_all');
+        if (!$user->employee) return false;
+
+        if ($case->status === 'closed') return false;
+
+        // If someone already accepted the case, no one else can assign
+        $accepted = $case->employees()
+                        ->wherePivot('action', 'accepted')
+                        ->exists();
+
+        if ($accepted) return false;
+
+        return true;
     }
 
-    public function viewAssigned(User $user)
+    public function accept(User $user, CaseModel $case)
     {
-        return $user->hasPermission('cases.view_assigned');
+        return $case->employees()
+            ->where('employee_id', $user->employee->id)
+            ->exists();
     }
 
-    public function viewUnassigned(User $user)
+    public function reassign(User $user, CaseModel $case)
     {
-        return $user->hasPermission('cases.view_unassigned');
-    }
+        if ($case->status === 'closed') return false;
 
-    public function assign(User $user)
-    {
-        return $user->hasPermission('cases.assign');
-    }
-
-    // --------- IMPORTANT ----------
-    public function assignToMe(User $user)
-    {
-        return $user->hasPermission('cases.assign');
-    }
-
-    public function accept(User $user)
-    {
-        return $user->hasPermission('cases.accept');
-    }
-
-    public function reassign(User $user)
-    {
         return $user->hasPermission('cases.reassign');
     }
 
-    public function removeEmployee(User $user)
+    public function removeEmployee(User $user, CaseModel $case)
     {
+        if ($case->status === 'closed') return false;
+
         return $user->hasPermission('cases.remove_employee');
     }
 
-    public function edit(User $user)
+    public function close(User $user, CaseModel $case)
     {
-        return $user->hasPermission('cases.edit');
+        if ($case->status === 'closed') return false;
+
+        return $user->hasPermission('cases.close')
+            || $case->employees()
+                ->where('employee_id', $user->employee->id)
+                ->wherePivot('action', 'accepted')
+                ->exists();
     }
 
-    public function delete(User $user)
-    {
-        return $user->hasPermission('cases.delete');
-    }
+
 }
