@@ -53,28 +53,25 @@ class CaseWorkflowController extends Controller
             'case' => $result
         ]);
     }
-public function reassign(CaseModel $case, Request $request)
-{
-    $this->authorize('reassign', $case);
+    public function reassign(CaseModel $case, Request $request)
+    {
+        $this->authorize('reassign', $case);
 
-    $request->validate([
-        'employee_id' => 'required|exists:employees,id'
-    ]);
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id'
+        ]);
 
-    $result = $this->service->reassign(
-        $case,
-        $request->user(),
-        $request->employee_id
-    );
+        $result = $this->service->reassign(
+            $case,
+            $request->user(),
+            $request->employee_id
+        );
 
-    return response()->json([
-        'message' => 'Case reassigned successfully.',
-        'case'    => $result
-    ]);
-}
-
-
-
+        return response()->json([
+            'message' => 'Case reassigned successfully.',
+            'case'    => $result
+        ]);
+    }
 
     public function removeEmployee(CaseModel $case, Request $request)
     {

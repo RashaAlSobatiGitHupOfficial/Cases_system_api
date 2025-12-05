@@ -60,52 +60,50 @@ class CaseWorkflowService
         return $this->returnCase($case);
     }
 
-public function reassign(CaseModel $case, $user, $newEmployeeId)
-{
-    // 1. Get current active primary employee
-    $current = $case->employees()
-        ->wherePivot('is_primary', true)
-        ->first();
+    public function reassign(CaseModel $case, $user, $newEmployeeId)
+    {
+        // 1. Get current active primary employee
+        $current = $case->employees()
+            ->wherePivot('is_primary', true)
+            ->first();
 
-    // 2. Close old assignment (if exists)
-    if ($current) {
-        $case->allEmployees()->updateExistingPivot($current->id, [
-            'ended_at'   => now(),
-            'action'     => 'reassigned',
-            'is_primary' => false
+        // 2. Close old assignment (if exists)
+        if ($current) {
+            $case->allEmployees()->updateExistingPivot($current->id, [
+                'ended_at'   => now(),
+                'action'     => 'reassigned',
+                'is_primary' => false
+            ]);
+        }
+
+        // 3. Attach new primary employee
+        $case->allEmployees()->attach($newEmployeeId, [
+            'is_primary'  => true,
+            'action'      => 'assigned',
+            'assigned_by' => $user->id,
+            'started_at'  => now(),
+            'ended_at'    => null
+        ]);
+
+        // 4. Update Case status
+        $case->update(['status' => 'reassigned']);
+
+        // 5. Add Case Log
+        CaseLog::create([
+            'case_id'   => $case->id,
+            'user_id'   => $user->id,
+            'action'    => 'reassigned',
+            'old_value' => $current ? $current->id : null,
+            'new_value' => $newEmployeeId
+        ]);
+
+        // 6. Return refreshed case with ACTIVE employees only
+        return $case->fresh()->load([
+            'client',
+            'priority',
+            'employees'
         ]);
     }
-
-    // 3. Attach new primary employee
-    $case->allEmployees()->attach($newEmployeeId, [
-        'is_primary'  => true,
-        'action'      => 'assigned',
-        'assigned_by' => $user->id,
-        'started_at'  => now(),
-        'ended_at'    => null
-    ]);
-
-    // 4. Update Case status
-    $case->update(['status' => 'reassigned']);
-
-    // 5. Add Case Log
-    CaseLog::create([
-        'case_id'   => $case->id,
-        'user_id'   => $user->id,
-        'action'    => 'reassigned',
-        'old_value' => $current ? $current->id : null,
-        'new_value' => $newEmployeeId
-    ]);
-
-    // 6. Return refreshed case with ACTIVE employees only
-    return $case->fresh()->load([
-        'client',
-        'priority',
-        'employees'
-    ]);
-}
-
-
 
     public function removeEmployee(CaseModel $case, $user, $employeeId)
     {
