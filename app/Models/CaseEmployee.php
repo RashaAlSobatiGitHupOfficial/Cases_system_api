@@ -11,7 +11,7 @@ class CaseEmployee extends Model
 
     protected $table = "case_employees";
 
-    protected $fillable = ['case_id', 'employee_id', 'status'];
+    protected $fillable = ['case_id', 'employee_id', 'is_primary','action','assigned_by','started_at','ended_at'];
 
 
     public function case()

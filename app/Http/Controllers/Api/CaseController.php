@@ -184,11 +184,6 @@ public function update(Request $request, CaseModel $case)
         'note'          => 'nullable|string',
         'type'          => 'required|in:technical,service_request,delay,miscommunication,enquery,others',
         'way_entry'     => 'nullable|in:email,manual',
-        'status'        => 'nullable|in:opened,assigned,in_progress,reassigned,closed',
-
-        'employee_ids'  => 'array',
-        'employee_ids.*'=> 'exists:employees,id',
-
         'attachment'    => 'nullable|file|max:5120',
     ]);
 
@@ -212,25 +207,8 @@ public function update(Request $request, CaseModel $case)
         $case->attachment = $path;
     }
 
-        if ($case->status !== 'closed') {
-
-            if (!isset($validated['employee_ids']) || count($validated['employee_ids']) === 0) {
-                $case->status = 'opened';
-            } else {
-                if ($case->status === 'opened') {
-                    $case->status = 'assigned';
-                }
-            }
-        }
-
-
-
     $case->save();
 
-    // Sync employees
-    if ($request->has('employee_ids')) {
-        $case->employees()->sync($validated['employee_ids']);
-    }
 
     // Return with relationships
     $case->load(['client', 'employees', 'priority']);

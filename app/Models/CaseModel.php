@@ -51,7 +51,9 @@ class CaseModel extends Model
     public function allEmployees()
     {
         return $this->belongsToMany(Employee::class, 'case_employees', 'case_id', 'employee_id')
-            ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at']);
+            ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at'])
+            ->withTimestamps();
+
     }
     // ACTIVE employees only
     public function employees()
@@ -59,10 +61,9 @@ class CaseModel extends Model
         return $this->allEmployees()->wherePivot('ended_at', null);
     }
 
-    // Accessor for “employees” in JSON response (uses active employees)
     public function getActiveEmployeesListAttribute()
     {
-        return $this->activeEmployees()->get();
+         return $this->employees()->get();
     }
 
 
