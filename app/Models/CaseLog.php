@@ -15,9 +15,13 @@ class CaseLog extends Model
         'case_id',
         'user_id',
         'action',
-        'old_value',
-        'new_value',
+ 
     ];
+    protected $casts = [
+    'old_value' => 'array',
+    'new_value' => 'array',
+];
+
 
     // Relationships
     public function case()

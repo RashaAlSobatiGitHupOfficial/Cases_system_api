@@ -13,9 +13,14 @@ class CaseWorkflowService
         $employeeId = $user->employee->id;
 
         // Employee already assigned?
-        if ($case->employees()->where('employee_id', $employeeId)->exists()) {
+        $active = $case->employees()
+            ->where('employee_id', $employeeId)
+            ->exists();
+
+        if ($active) {
             return $this->returnCase($case);
         }
+
 
         $case->employees()->attach($employeeId, [
             'action'      => 'assigned',
@@ -24,7 +29,9 @@ class CaseWorkflowService
             'started_at'  => now(),
         ]);
 
-        $case->update(['status' => 'assigned']);
+        if ($case->status === 'opened') {
+            $case->update(['status' => 'assigned']);
+        }
 
         CaseLog::create([
             'case_id' => $case->id,
@@ -46,7 +53,9 @@ class CaseWorkflowService
 
         $case->employees()->updateExistingPivot($employeeId, [
             'action' => 'accepted',
-            'started_at' => now()
+            'started_at' => now(),
+            'is_primary' => true,
+
         ]);
 
         $case->update(['status' => 'in_progress']);
@@ -112,7 +121,8 @@ class CaseWorkflowService
             'action'   => 'removed'
         ]);
 
-        $case->employees()->detach($employeeId);
+        // Do NOT detach, only mark ended
+        //$case->employees()->detach($employeeId);  REMOVE THIS LINE
 
         // If no employees remain → status becomes opened
         if ($case->employees()->count() === 0) {
@@ -139,7 +149,9 @@ class CaseWorkflowService
         CaseLog::create([
             'case_id' => $case->id,
             'user_id' => $user->id,
-            'action'  => 'closed'
+            'action'  => 'closed',
+            'new_value' => ['status' => 'closed']
+
         ]);
 
         return $this->returnCase($case);
@@ -150,7 +162,8 @@ class CaseWorkflowService
         return $case->fresh()->load([
             'client',
             'priority',
-            'employees'
+            'employees',
+            'allEmployees'
         ]);
     }
 }

@@ -53,7 +53,7 @@ public function index(Request $request)
         // Create user
         $user = User::create([
             'username' => $request->username,
-            'password' => hash::make($request->password),
+            'password' => Hash::make($request->password),
             'role_id'  => $request->role_id
         ]);
 

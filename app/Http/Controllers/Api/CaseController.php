@@ -74,12 +74,10 @@ class CaseController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
-        return $query->paginate(10);
+        return $query->paginate(10)->through(function($case) {
+            return $case->load(['client', 'priority', 'employees']);
+        });
     }
-
-
-
-
   public function store(Request $request)
     {
         $request->validate([
@@ -91,9 +89,7 @@ class CaseController extends Controller
             'note'        => 'nullable|string',
             'type'        => 'nullable|in:technical,service_request,delay,miscommunication,enquery,others',
             'way_entry'   => 'nullable|in:email,manual',
-            'status'      => 'nullable|in:opened,assigned,in_progress,reassigned,closed',
-
-            
+            'status'      => 'nullable|in:opened,assigned,in_progress,reassigned,closed',           
             'employee_ids' => 'nullable|array',
             'employee_ids.*' => 'exists:employees,id',
         ]);
@@ -116,11 +112,10 @@ class CaseController extends Controller
             
         ];
 
-        foreach (['type', 'way_entry', 'status'] as $field) {
-            if ($request->filled($field)) {
-                $data[$field] = $request->$field;
-            }
-        }
+        $data['type'] = $request->type ?? 'enquery';
+        $data['way_entry'] = $request->way_entry ?? 'email';
+        $data['status'] = $request->filled('employee_ids') ? 'assigned' : 'opened';
+
         if ($request->filled('employee_ids') && count($request->employee_ids) > 0) {
                 $data['status'] = 'assigned';
             } else {
@@ -141,9 +136,7 @@ class CaseController extends Controller
                     'employee_id' => $empId,
                     'action'      => 'assigned',
                     'assigned_by' => $request->user()->id,
-                    // 'is_primary'  => $empId == $primaryId,
-
-                    'is_primary'  => $isFirst, 
+                    'is_primary' => $isFirst ? 1 : 0,
                     'started_at'  => now(),
                     'ended_at'    => null
 
@@ -158,7 +151,7 @@ class CaseController extends Controller
             'case_id' => $case->id,
             'user_id' => $request->user()->id,
             'action'  => 'created',
-            'new_value' => json_encode($case->toArray()),
+            'new_value' => $case->toArray(),
         ]);
 
         return response()->json([
@@ -171,7 +164,9 @@ class CaseController extends Controller
 
     public function show(CaseModel $case)
     {
-        return response()->json(['case' => $case->load('client')]);
+        return response()->json([
+            'case' => $case->load(['client', 'priority', 'employees', 'allEmployees'])
+        ]);
     }
 
 public function update(Request $request, CaseModel $case)
@@ -195,7 +190,6 @@ public function update(Request $request, CaseModel $case)
     $case->note         = $validated['note'] ?? $case->note;
     $case->type         = $validated['type'];
     $case->way_entry    = $validated['way_entry'] ?? $case->way_entry;
-    $case->status       = $validated['status'] ?? $case->status;
 
     // Handle attachment
     if ($request->hasFile('attachment')) {
@@ -232,12 +226,24 @@ public function update(Request $request, CaseModel $case)
         ]);
 
         // Assign (sync ensures clean pivot)
-        $case->employees()->sync($validated['employee_ids']);
+        // $case->employees()->sync($validated['employee_ids']);
+        foreach ($validated['employee_ids'] as $empId) {
+            CaseEmployee::updateOrCreate(
+                ['case_id' => $case->id, 'employee_id' => $empId],
+                [
+                    'action'      => 'assigned',
+                    'assigned_by' => $request->user()->id,
+                    'started_at'  => now(),
+                    'ended_at'    => null,
+                    'is_primary'  => false
+                ]
+            );
+        }
 
-        // Auto-change status
         if ($case->status === 'opened') {
             $case->update(['status' => 'assigned']);
         }
+
 
         return response()->json([
             'message' => 'Employees assigned successfully',

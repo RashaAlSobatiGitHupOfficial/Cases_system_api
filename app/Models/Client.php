@@ -9,7 +9,11 @@ class Client extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['client_name', 'address', 'logo', 'email'];
+    protected $fillable = ['client_name', 'address', 'email'];
+    protected $casts = [
+    'logo' => 'string',
+];
+
 
 
     public function cases()

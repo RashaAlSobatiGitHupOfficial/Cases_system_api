@@ -27,6 +27,9 @@ class Employee extends Model
 
     public function cases()
     {
-        return $this->belongsToMany(CaseModel::class, 'case_employees');
+        return $this->belongsToMany(CaseModel::class, 'case_employees')
+        ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at'])
+        ->withTimestamps();
+
     }
 }

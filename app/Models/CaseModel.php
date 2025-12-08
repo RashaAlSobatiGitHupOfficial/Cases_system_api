@@ -10,7 +10,7 @@ class CaseModel extends Model
     use HasFactory;
 
     protected $table = 'cases';
-    protected $appends = ['attachment_url', 'is_mine'];
+    protected $appends = ['attachment_url', 'is_mine','allowed'];
 
 
     protected $fillable = [
@@ -52,6 +52,7 @@ class CaseModel extends Model
     {
         return $this->belongsToMany(Employee::class, 'case_employees', 'case_id', 'employee_id')
             ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at'])
+            ->wherePivotNull('ended_at')
             ->withTimestamps();
 
     }
@@ -84,6 +85,30 @@ class CaseModel extends Model
             ->where('employee_id', $user->employee->id)
             ->exists();
     }
+    public function employeeAssignments()
+    {
+        return $this->hasMany(CaseEmployee::class, 'case_id');
+    }
 
+// public function activeEmployees()
+// {
+//     return $this->belongsToMany(Employee::class, 'case_employees', 'case_id', 'employee_id')
+//         ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at'])
+//         ->wherePivotNull('ended_at')
+//         ->withTimestamps();
+// }
+// public function getActiveEmployeesListAttribute()
+// {
+//     return $this->activeEmployees()->get();
+// }
+
+public function getAllowedAttribute()
+{
+    $user = auth()->user();
+    if (!$user) return [];
+
+    return app(\App\Services\CaseActionService::class)
+                ->getAllowedActions($this, $user);
+}
 
 }

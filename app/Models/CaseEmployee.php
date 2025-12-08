@@ -12,6 +12,8 @@ class CaseEmployee extends Model
     protected $table = "case_employees";
 
     protected $fillable = ['case_id', 'employee_id', 'is_primary','action','assigned_by','started_at','ended_at'];
+    protected $casts = ['is_primary' => 'boolean'];
+
 
 
     public function case()
@@ -23,4 +25,9 @@ class CaseEmployee extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id');
     }
+    public function assignedByUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
 }

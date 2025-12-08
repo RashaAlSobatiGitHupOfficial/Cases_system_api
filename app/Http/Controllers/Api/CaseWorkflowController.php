@@ -22,6 +22,10 @@ class CaseWorkflowController extends Controller
     public function assignToMe(CaseModel $case, Request $request)
     {
         $this->authorize('assignToMe', $case);
+        if (!$request->user()->employee) {
+            abort(403, 'No employee profile found.');
+        }
+
 
         $result = $this->service->assignToMe($case, $request->user());
 

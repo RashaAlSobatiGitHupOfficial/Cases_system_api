@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('client_name');
             $table->string('address');
-            $table->text('logo')->nullable();
+            $table->string('logo')->nullable();
             $table->string('email')->unique();
             $table->timestamps();
         });

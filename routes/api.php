@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CaseWorkflowController;
+use App\Http\Controllers\Api\ReportsController;
 
 
 
@@ -66,5 +67,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cases/{case}/update-employees', [CaseWorkflowController::class, 'updateEmployees'
 ]);
 
+    Route::get('/reports/cases', [ReportsController::class, 'casesReport']);
 
+    // Export
+    Route::get('/reports/cases/export', [ReportsController::class, 'exportCases']);
 });

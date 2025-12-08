@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Employee;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -23,6 +24,7 @@ class AuthController extends Controller
             'gender'    => 'required|in:male,female',
             'phone'     => 'required|string|unique:employees,phone',
         ]);
+        DB::beginTransaction();
 
         // Create user
         $user = User::create([
@@ -40,6 +42,7 @@ class AuthController extends Controller
             'gender'      => $request->gender,
             'phone'       => $request->phone,
         ]);
+        DB::commit();
 
 
         return response()->json([

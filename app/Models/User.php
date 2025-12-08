@@ -25,12 +25,16 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
-public function hasPermission($permission)
-{
-    return $this->role
-        ->permissions
-        ->pluck('permission_name')
-        ->contains($permission);
-}
+    public function hasPermission($permission)
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        return $this->role->permissions()
+            ->pluck('permission_name')
+            ->contains($permission);
+    }
+
 
 }
