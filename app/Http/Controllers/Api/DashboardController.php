@@ -13,128 +13,111 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    
-   public function cards(Request $request)
-{
-    $range = $request->query('range', 'month'); 
-
-    $queryUsers = User::query();
-    $queryClients = Client::query();
-    $queryCases = CaseModel::query();
-
-    switch ($range) {
-        case 'day':
-            $queryUsers->whereDate('created_at', today());
-            $queryClients->whereDate('created_at', today());
-            $queryCases->whereDate('created_at', today());
-            break;
-
-        case 'week':
-            $start = now()->startOfWeek();
-            $end = now()->endOfWeek();
-            $queryUsers->whereBetween('created_at', [$start, $end]);
-            $queryClients->whereBetween('created_at', [$start, $end]);
-            $queryCases->whereBetween('created_at', [$start, $end]);
-            break;
-
-        case 'year':
-            $queryUsers->whereYear('created_at', now()->year);
-            $queryClients->whereYear('created_at', now()->year);
-            $queryCases->whereYear('created_at', now()->year);
-            break;
-
-        case 'month':
-        default:
-            $queryUsers->whereMonth('created_at', now()->month);
-            $queryClients->whereMonth('created_at', now()->month);
-            $queryCases->whereMonth('created_at', now()->month);
-            break;
+    public function cards(Request $request)
+    {
+        $range = $request->query('range', 'month');
+        return response()->json([
+            'total_employees' => $this->filterRange(User::query(), $range)->count(),
+            'total_clients'   => $this->filterRange(Client::query(), $range)->count(),
+            'total_cases'     => $this->filterRange(CaseModel::query(), $range)->count(),
+        ]);
     }
 
-    return response()->json([
-        'total_employees' => $queryUsers->count(),
-        'total_clients'   => $queryClients->count(),
-        'total_cases'     => $queryCases->count(),
-    ]);
-}
-
-
-
- 
-    public function casesPerDay()
+    public function casesPerDay(Request $request)
     {
-        $data = CaseModel::select(
+        $range = $request->query('range', 'month');
+
+        $query = CaseModel::select(
             DB::raw('DATE(created_at) as date'),
             DB::raw('COUNT(*) as total')
-        )
-        ->where('created_at', '>=', now()->subDays(7))
-        ->groupBy('date')
-        ->orderBy('date')
-        ->get();
+        )->groupBy('date')->orderBy('date');
 
-        return response()->json($data);
+        $query = $this->filterRange($query, $range);
+
+        return response()->json($query->get());
     }
 
-
-
-    public function casesByStatus()
+    public function casesByStatus(Request $request)
     {
-        $data = CaseModel::select('status', DB::raw('COUNT(*) as total'))
-            ->groupBy('status')
-            ->get();
+        $range = $request->query('range', 'month');
 
-        return response()->json($data);
+        $query = CaseModel::select('status', DB::raw('COUNT(*) as total'))
+            ->groupBy('status');
+
+        $query = $this->filterRange($query, $range);
+
+        return response()->json($query->get());
     }
 
-
-   
-   public function casesByPriority()
+    public function casesByPriority(Request $request)
     {
-        $data = CaseModel::with('priority')
+        $range = $request->query('range', 'month');
+
+        $query = CaseModel::with('priority')
             ->select('priority_id', DB::raw('COUNT(*) as total'))
-            ->groupBy('priority_id')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'priority' => $item->priority->priority_name ?? "Unknown",
-                    'total' => $item->total,
-                ];
-            });
+            ->groupBy('priority_id');
 
-        return response()->json($data);
+        $query = $this->filterRange($query, $range);
+
+        return response()->json(
+            $query->get()->map(fn ($item) => [
+                'priority' => $item->priority->priority_name ?? "Unknown",
+                'total' => $item->total
+            ])
+        );
     }
 
-
-    
-    public function casesByType()
+    public function casesByType(Request $request)
     {
-        $data = CaseModel::select('type', DB::raw('COUNT(*) as total'))
-            ->groupBy('type')
-            ->get();
+        $range = $request->query('range', 'month');
 
-        return response()->json($data);
-    }
- 
+        $query = CaseModel::select('type', DB::raw('COUNT(*) as total'))
+            ->groupBy('type');
 
-    
-   public function topClients()
-    {
-        $data = Client::withCount('cases')
-            ->orderBy('cases_count', 'desc')
-            ->take(5)
-            ->get();
+        $query = $this->filterRange($query, $range);
 
-        return response()->json($data);
+        return response()->json($query->get());
     }
 
-    
-    public function completionRate()
+    public function topClients(Request $request)
     {
-        $total = CaseModel::count();
-        $closed = CaseModel::where('status', 'closed')->count();
+        $range = $request->query('range', 'month');
+
+        $query = Client::withCount(['cases' => function ($q) use ($range) {
+            $this->filterRange($q, $range);
+        }])->orderBy('cases_count', 'desc')->take(5);
+
+        return response()->json($query->get());
+    }
+
+    public function completionRate(Request $request)
+    {
+        $range = $request->query('range', 'month');
+
+        $total = $this->filterRange(CaseModel::query(), $range)->count();
+        $closed = $this->filterRange(
+            CaseModel::where('status', 'closed'), 
+            $range
+        )->count();
 
         return response()->json([
             'completion_rate' => $total > 0 ? round(($closed / $total) * 100, 2) : 0
         ]);
     }
+
+    private function filterRange($query, $range)
+    {
+        switch ($range) {
+            case 'day':
+                return $query->whereDate('created_at', today());
+            case 'week':
+                return $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+            case 'year':
+                return $query->whereYear('created_at', now()->year);
+            case 'month':
+            default:
+                return $query->whereMonth('created_at', now()->month);
+        }
+    }
+
 }

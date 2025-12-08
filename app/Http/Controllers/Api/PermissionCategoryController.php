@@ -77,24 +77,36 @@ class PermissionCategoryController extends Controller
             'permissions.*' => 'string|max:255'
         ]);
 
+        // Update category name
         if (isset($validated['category_name'])) {
             $category->update([
                 'category_name' => $validated['category_name']
             ]);
         }
 
-        // Replace category permissions if provided
+        // If permissions were sent, sync them intelligently
         if (array_key_exists('permissions', $validated)) {
-            // Delete old permissions
-            Permission::where('category_id', $category->id)->delete();
 
-            // Add new ones
-            foreach ($validated['permissions'] as $permissionName) {
+            $incoming = collect($validated['permissions'])->map(fn($p) => trim($p))->filter()->unique();
+
+            // Existing permissions in DB for this category
+            $existing = Permission::where('category_id', $category->id)
+                        ->pluck('permission_name');
+
+            // 1) Add new permissions (incoming but not existing)
+            $toAdd = $incoming->diff($existing);
+            foreach ($toAdd as $name) {
                 Permission::create([
-                    'permission_name' => $permissionName,
-                    'category_id'     => $category->id,
+                    'permission_name' => $name,
+                    'category_id'     => $category->id
                 ]);
             }
+
+            // 2) Delete removed permissions (existing but not incoming)
+            $toDelete = $existing->diff($incoming);
+            Permission::where('category_id', $category->id)
+                ->whereIn('permission_name', $toDelete)
+                ->delete();
         }
 
         return response()->json([
@@ -102,6 +114,7 @@ class PermissionCategoryController extends Controller
             'category' => $category->load('permissions')
         ]);
     }
+
 
     public function destroy($id)
     {
