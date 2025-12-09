@@ -71,4 +71,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Export
     Route::get('/reports/cases/export', [ReportsController::class, 'exportCases']);
+
+
+
+    Route::get('/dashboard/cases-per-status/excel', [DashboardController::class, 'exportCasesPerStatus']);
+    Route::get('/dashboard/cases-per-day/excel', [DashboardController::class, 'exportCasesPerDay']);
+    Route::get('/dashboard/cases-per-type/excel', [DashboardController::class, 'exportCasesPerType']);
+    Route::get('/dashboard/cases-per-priority/excel', [DashboardController::class, 'exportCasesPerPriority']);
+    Route::get('/dashboard/top-clients/excel', [DashboardController::class, 'exportTopClients']);
+
 });
