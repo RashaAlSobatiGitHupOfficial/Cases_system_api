@@ -73,6 +73,12 @@ class CaseController extends Controller
         } else {
             $query->orderBy('created_at', 'desc');
         }
+        if ($request->filled('employee_ids') && is_array($request->employee_ids)) {
+            $query->whereHas('employees', function($q) use ($request) {
+                $q->whereIn('employee_id', $request->employee_ids);
+            });
+        }
+
 
         return $query->paginate(10)->through(function($case) {
             return $case->load(['client', 'priority', 'employees']);
