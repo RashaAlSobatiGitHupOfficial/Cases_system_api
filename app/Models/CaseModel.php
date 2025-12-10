@@ -111,4 +111,11 @@ public function getAllowedAttribute()
                 ->getAllowedActions($this, $user);
 }
 
+
+public function creator()
+{
+    return $this->belongsTo(User::class, 'user_id');
+}
+
+
 }
