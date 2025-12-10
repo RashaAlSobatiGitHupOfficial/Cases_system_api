@@ -14,8 +14,11 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CaseWorkflowController;
+use App\Http\Controllers\Api\ClientReportController;
+use App\Http\Controllers\Api\DashboardExportExcelController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\EmployeeReportsController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -73,12 +76,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-    Route::get('/dashboard/cases-per-status/excel', [DashboardController::class, 'exportCasesPerStatus']);
-    Route::get('/dashboard/cases-per-day/excel', [DashboardController::class, 'exportCasesPerDay']);
-    Route::get('/dashboard/cases-per-type/excel', [DashboardController::class, 'exportCasesPerType']);
-    Route::get('/dashboard/cases-per-priority/excel', [DashboardController::class, 'exportCasesPerPriority']);
-    Route::get('/dashboard/top-clients/excel', [DashboardController::class, 'exportTopClients']);
+    Route::get('/dashboard/cases-per-status/excel', [DashboardExportExcelController::class, 'exportCasesPerStatus']);
+    Route::get('/dashboard/cases-per-day/excel', [DashboardExportExcelController::class, 'exportCasesPerDay']);
+    Route::get('/dashboard/cases-per-type/excel', [DashboardExportExcelController::class, 'exportCasesPerType']);
+    Route::get('/dashboard/cases-per-priority/excel', [DashboardExportExcelController::class, 'exportCasesPerPriority']);
+    Route::get('/dashboard/top-clients/excel', [DashboardExportExcelController::class, 'exportTopClients']);
 
     Route::get('/reports/employees', [EmployeeReportsController::class, 'index']);
 
 });
+
+    Route::get('/reports/clients', [ClientReportController::class, 'index']);
+    Route::get('/reports/clients/{client}', [ClientReportController::class, 'show']);
+    Route::get('/reports/clients/{client}/export', [ClientReportController::class, 'exportClientReport']);

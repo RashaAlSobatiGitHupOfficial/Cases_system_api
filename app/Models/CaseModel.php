@@ -105,4 +105,11 @@ public function logs()
     return $this->hasMany(\App\Models\CaseLog::class, 'case_id');
 }
 
+
+public function creator()
+{
+    return $this->belongsTo(User::class, 'user_id');
+}
+
+
 }
