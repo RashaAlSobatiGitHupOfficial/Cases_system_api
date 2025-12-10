@@ -15,8 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CaseWorkflowController;
 use App\Http\Controllers\Api\ReportsController;
-
-
+use App\Http\Controllers\Api\EmployeeReportsController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -79,5 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/cases-per-type/excel', [DashboardController::class, 'exportCasesPerType']);
     Route::get('/dashboard/cases-per-priority/excel', [DashboardController::class, 'exportCasesPerPriority']);
     Route::get('/dashboard/top-clients/excel', [DashboardController::class, 'exportTopClients']);
+
+    Route::get('/reports/employees', [EmployeeReportsController::class, 'index']);
 
 });

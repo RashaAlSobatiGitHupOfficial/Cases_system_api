@@ -90,17 +90,7 @@ class CaseModel extends Model
         return $this->hasMany(CaseEmployee::class, 'case_id');
     }
 
-// public function activeEmployees()
-// {
-//     return $this->belongsToMany(Employee::class, 'case_employees', 'case_id', 'employee_id')
-//         ->withPivot(['is_primary', 'action', 'assigned_by', 'started_at', 'ended_at'])
-//         ->wherePivotNull('ended_at')
-//         ->withTimestamps();
-// }
-// public function getActiveEmployeesListAttribute()
-// {
-//     return $this->activeEmployees()->get();
-// }
+
 
 public function getAllowedAttribute()
 {
@@ -109,6 +99,10 @@ public function getAllowedAttribute()
 
     return app(\App\Services\CaseActionService::class)
                 ->getAllowedActions($this, $user);
+}
+public function logs()
+{
+    return $this->hasMany(\App\Models\CaseLog::class, 'case_id');
 }
 
 }
