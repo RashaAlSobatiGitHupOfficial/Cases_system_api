@@ -3,8 +3,9 @@
 namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ClientStatsSheet implements FromArray
+class ClientStatsSheet implements FromArray, WithTitle
 {
     protected $data;
 
@@ -34,5 +35,10 @@ class ClientStatsSheet implements FromArray
         }
 
         return $rows;
+    }
+
+    public function title(): string
+    {
+        return 'Client Status';   
     }
 }

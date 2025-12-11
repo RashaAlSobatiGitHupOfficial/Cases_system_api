@@ -4,8 +4,9 @@ namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ClientTeamSheet implements FromArray, WithHeadings
+class ClientTeamSheet implements FromArray, WithHeadings, WithTitle
 {
     protected $team;
 
@@ -28,5 +29,11 @@ class ClientTeamSheet implements FromArray, WithHeadings
                 $e['email'] ?? '—',
             ];
         }, $this->team);
+    }
+
+
+    public function title(): string
+    {
+        return 'Client Team Info';   
     }
 }

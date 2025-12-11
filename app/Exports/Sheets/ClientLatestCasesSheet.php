@@ -4,8 +4,9 @@ namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ClientLatestCasesSheet implements FromArray, WithHeadings
+class ClientLatestCasesSheet implements FromArray, WithHeadings, WithTitle
 {
     protected $cases;
 
@@ -33,5 +34,10 @@ class ClientLatestCasesSheet implements FromArray, WithHeadings
                 implode(', ', $case['employees'] ?? []),
             ];
         }, $this->cases);
+    }
+
+    public function title(): string
+    {
+        return 'Client Latest Cases';   
     }
 }
