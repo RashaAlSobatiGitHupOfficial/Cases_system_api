@@ -3,8 +3,9 @@
 namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ClientInfoSheet implements FromArray
+class ClientInfoSheet implements FromArray, WithTitle
 {
     protected $data;
 
@@ -22,5 +23,10 @@ class ClientInfoSheet implements FromArray
             ['Email', $this->data['client']['email']],
             ['Address', $this->data['client']['address']],
         ];
+    }
+
+    public function title(): string
+    {
+        return 'Client Info';   
     }
 }
