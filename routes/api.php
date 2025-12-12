@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ClientReportController;
 use App\Http\Controllers\Api\DashboardExportExcelController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\EmployeeReportsController;
+use App\Http\Controllers\Api\EmployeeStatisticsController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -83,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/top-clients/excel', [DashboardExportExcelController::class, 'exportTopClients']);
 
     Route::get('/reports/employees', [EmployeeReportsController::class, 'index']);
+    Route::get('/statistics/employees', [EmployeeStatisticsController::class, 'index']);
 
 });
 
