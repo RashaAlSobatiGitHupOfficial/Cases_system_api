@@ -6,7 +6,7 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 
 
-class ClientReportExport implements WithMultipleSheets
+class ClientStatisticExport implements WithMultipleSheets
 {
   protected $data;
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CaseController;
 use App\Http\Controllers\Api\CaseEmployeeController;
+use App\Http\Controllers\Api\CasesReportController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmployeeController;
@@ -14,7 +15,8 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CaseWorkflowController;
-use App\Http\Controllers\Api\ClientReportController;
+use App\Http\Controllers\Api\ClientsReportsController;
+use App\Http\Controllers\Api\ClientStatisticsController;
 use App\Http\Controllers\Api\DashboardExportExcelController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\EmployeeReportsController;
@@ -87,9 +89,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/employees/export',[EmployeeReportsController::class, 'export']);
 
     Route::get('/statistics/employees', [EmployeeStatisticsController::class, 'index']);
+    Route::get('/report/clients',[ClientsReportsController::class,'index']);
+Route::get('/report/clients/export', [ClientsReportsController::class, 'export']);
+
+
+
+     Route::get('/statistics/clients', [ClientStatisticsController::class, 'index']);
+    Route::get('/statistics/clients/{client}', [ClientStatisticsController::class, 'show']);
+    Route::get('/statistics/clients/{client}/export', [ClientStatisticsController::class, 'exportClientReport']);
+
 
 });
 
-    Route::get('/reports/clients', [ClientReportController::class, 'index']);
-    Route::get('/reports/clients/{client}', [ClientReportController::class, 'show']);
-    Route::get('/reports/clients/{client}/export', [ClientReportController::class, 'exportClientReport']);
+   

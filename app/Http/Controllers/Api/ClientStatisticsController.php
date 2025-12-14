@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\ClientReportExport;
+use App\Exports\ClientStatisticExport;
 use App\Http\Controllers\Controller;
 
 use App\Models\Client;
@@ -10,18 +10,17 @@ use App\Models\CaseModel;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
-class ClientReportController extends Controller
+class ClientStatisticsController extends Controller
 {
    public function exportClientReport($clientId)
 {
-    // نفس الداتا التي تعيدها في show
     $clientData = $this->show(request(), $clientId)->getData(true);
 
     $clientName = $clientData['client']['client_name'] ?? 'client';
 
     $fileName = 'client-report-' . $clientName . '-' . now()->format('Y-m-d_His') . '.xlsx';
 
-    return Excel::download(new ClientReportExport($clientData), $fileName);
+    return Excel::download(new ClientStatisticExport($clientData), $fileName);
 }
 
     public function index(Request $request)
