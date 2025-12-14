@@ -8,27 +8,61 @@ use App\Models\Employee;
 use App\Models\CaseModel;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\Exports\EmployeeReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EmployeeReportsController extends Controller
 {
+    /* =====================================================
+     | INDEX (API TABLE)
+     ===================================================== */
     public function index(Request $request)
     {
-        /* ==============================
-         * 1) Filters
-         * ============================== */
-        $range        = $request->get('range', 'month');
-        $employeeName = $request->get('employee');
-        $slaFilter    = $request->get('sla');          // met | breached
-        $performance  = $request->get('performance'); // high | medium | low
-        $completion   = $request->get('completion');  // high | mid | low
-        $perPage      = $request->get('per_page', 10);
+        $range   = $request->get('range', 'month');
+        $perPage = (int) $request->get('per_page', 10);
+        $page    = (int) $request->get('page', 1);
 
         $dateRange = $this->getDateRange($range);
 
-        /* ==============================
-         * 2) Base employees
-         * ============================== */
-        $employees = Employee::with(['user', 'cases.priority', 'cases.logs'])
+        $results = $this->buildEmployeeReportData($request, $dateRange);
+
+        return response()->json(
+            $this->paginateCollection($results, $perPage, $page)
+        );
+    }
+
+    /* =====================================================
+     | EXPORT (EXCEL)
+     ===================================================== */
+    public function export(Request $request)
+    {
+        $range = $request->get('range', 'month');
+        $dateRange = $this->getDateRange($range);
+
+        $visibleColumns = array_filter(
+            explode(',', $request->get('visible_columns', ''))
+        );
+
+        $data = $this->buildEmployeeReportData($request, $dateRange)
+            ->map(fn ($row) => collect($row)->only($visibleColumns)->toArray())
+            ->values();
+
+        return Excel::download(
+            new EmployeeReportExport($data->toArray(), $visibleColumns),
+            'employees-report.xlsx'
+        );
+    }
+
+    /* =====================================================
+     | CORE REPORT LOGIC (SHARED)
+     ===================================================== */
+    private function buildEmployeeReportData(Request $request, array $dateRange): Collection
+    {
+        $employeeName = $request->get('employee');
+        $performance  = $request->get('performance'); // high | medium | low
+        $slaFilter    = $request->get('sla');          // met | breached
+
+        $employees = Employee::with('user')
             ->when($employeeName, function ($q) use ($employeeName) {
                 $q->whereRaw(
                     "CONCAT(first_name,' ',last_name) LIKE ?",
@@ -37,25 +71,30 @@ class EmployeeReportsController extends Controller
             })
             ->get();
 
-        /* ==============================
-         * 3) Build metrics per employee
-         * ============================== */
-        $results = $employees->map(function ($emp) use ($dateRange) {
+        $results = collect();
+
+        foreach ($employees as $emp) {
+
+            if (!$emp->user_id) continue;
 
             $baseQuery = CaseModel::whereBetween('created_at', $dateRange)
                 ->whereHas('employees', fn ($q) =>
                     $q->where('employee_id', $emp->id)
                 );
 
-            $totalCases  = $baseQuery->count();
-            $closedCases = (clone $baseQuery)->where('status', 'closed')->count();
+            $totalCases = $baseQuery->count();
+            if ($totalCases === 0) continue;
 
-            $completionRate = $totalCases > 0
-                ? round(($closedCases / $totalCases) * 100, 2)
-                : 0;
+            /* ================= CLOSED ================= */
+            $closedQuery = (clone $baseQuery)->where('status', 'closed');
+            $closedCases = $closedQuery->count();
 
-            /* ===== First Response ===== */
-            $firstResponses = (clone $baseQuery)->where('status', 'closed')
+            /* ================= COMPLETION ================= */
+            $completionRate = round(($closedCases / $totalCases) * 100, 2);
+
+            /* ================= FIRST RESPONSE ================= */
+            $avgFirstResponse = $closedQuery
+                ->with('logs')
                 ->get()
                 ->map(function ($case) use ($emp) {
                     $log = $case->logs
@@ -67,39 +106,40 @@ class EmployeeReportsController extends Controller
                         ? $case->created_at->diffInMinutes($log->created_at)
                         : null;
                 })
-                ->filter();
+                ->filter()
+                ->avg() ?? 0;
 
-            $avgFirstResponse = round($firstResponses->avg() ?? 0, 2);
+            /* ================= SLA ================= */
+            $closedCount   = 0;
+            $breachedCount = 0;
 
-            /* ===== Resolution Time ===== */
-            $resolutionTimes = (clone $baseQuery)->where('status', 'closed')
-                ->get()
-                ->map(function ($case) {
-                    $accepted = $case->logs->where('action', 'case_accepted')->first();
-                    $closed   = $case->logs->where('action', 'closed')->first();
+            $closedQuery->with(['priority', 'logs'])->get()
+                ->each(function ($case) use (&$closedCount, &$breachedCount) {
 
-                    return ($accepted && $closed)
-                        ? $accepted->created_at->diffInHours($closed->created_at)
-                        : null;
-                })
-                ->filter();
+                    if (!$case->priority) return;
 
-            $avgResolution = round($resolutionTimes->avg() ?? 0, 2);
+                    $closedLog = $case->logs
+                        ->where('action', 'closed')
+                        ->sortBy('created_at')
+                        ->first();
 
-            /* ===== SLA ===== */
-            $slaRate = (clone $baseQuery)->where('status', 'closed')
-                ->get()
-                ->map(function ($case) {
-                    if (!$case->priority) return true;
+                    if (!$closedLog) return;
 
-                    $days = $case->created_at->diffInDays($case->updated_at);
-                    return $days <= $case->priority->delay_time;
-                })
-                ->avg();
+                    $closedCount++;
 
-            $slaRate = $slaRate ? round($slaRate * 100, 2) : 0;
+                    $hours = $case->created_at
+                        ->diffInHours($closedLog->created_at);
 
-            /* ===== Performance Score ===== */
+                    if ($hours > ($case->priority->delay_time * 24)) {
+                        $breachedCount++;
+                    }
+                });
+
+            $slaRate = $closedCount > 0
+                ? round((($closedCount - $breachedCount) / $closedCount) * 100, 2)
+                : 0;
+
+            /* ================= PERFORMANCE SCORE ================= */
             $responseScore = 100 - min($avgFirstResponse, 100);
 
             $performanceScore = round(
@@ -108,67 +148,59 @@ class EmployeeReportsController extends Controller
                 ($responseScore * 0.2)
             );
 
-            return [
-                'id'                       => $emp->id,
-                'name'                     => $emp->first_name . ' ' . $emp->last_name,
-                'total_cases'              => $totalCases,
-                'closed_cases'             => $closedCases,
-                'completion_rate'          => $completionRate,
-                'avg_first_response_time'  => $avgFirstResponse,
-                'avg_resolution_time'      => $avgResolution,
-                'sla_rate'                 => $slaRate,
-                'performance_score'        => $performanceScore,
-            ];
-        });
+            $results->push([
+                'id'                      => $emp->id,
+                'name'                    => $emp->first_name . ' ' . $emp->last_name,
+                'total_cases'             => $totalCases,
+                'closed_cases'            => $closedCases,
+                'completion_rate'         => $completionRate,
+                'avg_first_response_time' => round($avgFirstResponse, 2),
+                'sla_rate'                => $slaRate,
+                'performance_score'       => $performanceScore,
+            ]);
+        }
 
-        /* ==============================
-         * 4) Apply filters (collection)
-         * ============================== */
-        $results = $results
-            ->when($slaFilter === 'met', fn ($c) => $c->where('sla_rate', '>', 0))
-            ->when($slaFilter === 'breached', fn ($c) => $c->where('sla_rate', '=', 0))
-
-            ->when($performance === 'high', fn ($c) => $c->where('performance_score', '>=', 80))
+        /* ================= FILTERS ================= */
+        return $results
+            ->when($performance === 'high', fn ($c) =>
+                $c->where('performance_score', '>=', 85)
+            )
             ->when($performance === 'medium', fn ($c) =>
-                $c->whereBetween('performance_score', [50, 79])
+                $c->whereBetween('performance_score', [60, 84])
             )
-            ->when($performance === 'low', fn ($c) => $c->where('performance_score', '<', 50))
-
-            ->when($completion === 'high', fn ($c) => $c->where('completion_rate', '>=', 90))
-            ->when($completion === 'mid', fn ($c) =>
-                $c->whereBetween('completion_rate', [70, 89])
+            ->when($performance === 'low', fn ($c) =>
+                $c->where('performance_score', '<', 60)
             )
-            ->when($completion === 'low', fn ($c) => $c->where('completion_rate', '<', 70));
-
-        /* ==============================
-         * 5) Server-side pagination
-         * ============================== */
-        $page     = $request->get('page', 1);
-        $paginated = $this->paginateCollection($results, $perPage, $page);
-
-        return response()->json($paginated);
+            ->when($slaFilter === 'met', fn ($c) =>
+                $c->where('sla_rate', '>', 0)
+            )
+            ->when($slaFilter === 'breached', fn ($c) =>
+                $c->where('sla_rate', '=', 0)
+            )
+            ->values();
     }
 
-    /* ==============================
-     * Helpers
-     * ============================== */
-    private function paginateCollection(Collection $items, $perPage, $page)
+    /* =====================================================
+     | HELPERS
+     ===================================================== */
+    private function paginateCollection(Collection $items, int $perPage, int $page): array
     {
         $total = $items->count();
-        $data  = $items->slice(($page - 1) * $perPage, $perPage)->values();
 
         return [
-            'data' => $data,
+            'data' => $items
+                ->slice(($page - 1) * $perPage, $perPage)
+                ->values(),
             'meta' => [
-                'current_page' => (int) $page,
-                'per_page'     => (int) $perPage,
+                'current_page' => $page,
+                'per_page'     => $perPage,
                 'total'        => $total,
-                'last_page'    => ceil($total / $perPage),
+                'last_page'    => (int) ceil($total / $perPage),
             ]
         ];
     }
 
-    private function getDateRange($range)
+    private function getDateRange(string $range): array
     {
         return match ($range) {
             'day'  => [Carbon::today(), Carbon::now()],

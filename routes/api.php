@@ -84,6 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/top-clients/excel', [DashboardExportExcelController::class, 'exportTopClients']);
 
     Route::get('/reports/employees', [EmployeeReportsController::class, 'index']);
+    Route::get('/reports/employees/export',[EmployeeReportsController::class, 'export']);
+
     Route::get('/statistics/employees', [EmployeeStatisticsController::class, 'index']);
 
 });
