@@ -59,6 +59,11 @@ class PermissionSeeder extends Seeder
                 ]
             ],
             [
+                'category_name' => 'notifications',
+                'permissions' => [
+                   'receive_notification']
+            ],
+            [
                 'category_name' => 'statistics',
                 'permissions' => [
                     'add statistic',
