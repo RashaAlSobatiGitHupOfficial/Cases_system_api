@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CheckCaseDelaysJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -18,3 +19,6 @@ Schedule::command('gmail:fetch --limit=5')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::job(new CheckCaseDelaysJob)
+    ->everyMinute();

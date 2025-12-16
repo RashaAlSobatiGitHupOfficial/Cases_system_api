@@ -101,4 +101,28 @@ Route::get('/report/clients/export', [ClientsReportsController::class, 'export']
 
 });
 
+
+ Route::middleware('auth:sanctum')->get('/notifications', function (Request $request) {
+    return [
+        'unread_count' => $request->user()->unreadNotifications()->count(),
+        'notifications' => $request->user()
+            ->unreadNotifications()
+            ->latest()
+            ->take(20)
+            ->get(),
+    ];
+});
+
+
+Route::middleware('auth:sanctum')->post('/notifications/{id}/read', function ($id, Request $request) {
+    $notification = $request->user()
+        ->notifications()
+        ->where('id', $id)
+        ->firstOrFail();
+
+    $notification->markAsRead();
+
+    return ['success' => true];
+});
+
    
