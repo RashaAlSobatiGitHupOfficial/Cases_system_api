@@ -11,58 +11,13 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportsController extends Controller
 {
-    public function casesReport(Request $request)
-    {
-        $query = CaseModel::with(['client', 'employees', 'priority']);
+public function casesReport(Request $request)
+{
+    $query = $this->buildCasesQuery($request);
 
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('title', 'LIKE', "%{$request->search}%")
-                ->orWhere('description', 'LIKE', "%{$request->search}%");
-            });
-        }
+    return $query->paginate(10);
+}
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('way_entry')) {
-            $query->where('way_entry', $request->way_entry);
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        if ($request->filled('client_id')) {
-            $query->where('client_id', $request->client_id);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        if ($request->filled('priority')) {
-            $query->whereHas('priority', function ($q) use ($request) {
-                $q->where('priority_name', 'LIKE', '%' . trim($request->priority) . '%');
-            });
-        }
-
-        if ($request->filled('sort_by')) {
-            $direction = $request->sort_direction === 'desc' ? 'desc' : 'asc';
-            $query->orderBy($request->sort_by, $direction);
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
-
-        return $query->paginate(10)->through(function($case) {
-            return $case->load(['client', 'priority', 'employees']);
-        });
-    }
 
     
    public function exportCases(Request $request)
@@ -176,5 +131,28 @@ class ReportsController extends Controller
 
         return $query;
     }
+    private function resolveDateRange(Request $request): array
+{
+        $range = $request->get('range', 'month');
+
+        if (
+            $range === 'custom' &&
+            $request->filled('from_date') &&
+            $request->filled('to_date')
+        ) {
+            return [
+                \Carbon\Carbon::parse($request->from_date)->startOfDay(),
+                \Carbon\Carbon::parse($request->to_date)->endOfDay(),
+            ];
+        }
+
+        return match ($range) {
+            'day'   => [now()->startOfDay(), now()],
+            'week'  => [now()->startOfWeek(), now()],
+            'year'  => [now()->startOfYear(), now()],
+            default => [now()->startOfMonth(), now()],
+        };
+    }
+
 
 }

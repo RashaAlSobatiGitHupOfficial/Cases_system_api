@@ -22,7 +22,7 @@ class EmployeeReportsController extends Controller
         $perPage = (int) $request->get('per_page', 10);
         $page    = (int) $request->get('page', 1);
 
-        $dateRange = $this->getDateRange($range);
+        $dateRange = $this->resolveDateRange($request);
 
         $results = $this->buildEmployeeReportData($request, $dateRange);
 
@@ -36,8 +36,7 @@ class EmployeeReportsController extends Controller
      ===================================================== */
     public function export(Request $request)
     {
-        $range = $request->get('range', 'month');
-        $dateRange = $this->getDateRange($range);
+        $dateRange = $this->resolveDateRange($request);
 
         $visibleColumns = array_filter(
             explode(',', $request->get('visible_columns', ''))
@@ -52,6 +51,7 @@ class EmployeeReportsController extends Controller
             'employees-report.xlsx'
         );
     }
+
 
     /* =====================================================
      | CORE REPORT LOGIC (SHARED)
@@ -209,4 +209,29 @@ class EmployeeReportsController extends Controller
             default => [Carbon::now()->startOfMonth(), Carbon::now()],
         };
     }
+    private function resolveDateRange(Request $request): array
+    {
+        $range = $request->get('range', 'month');
+
+        // ✅ Custom Range
+        if (
+            $range === 'custom' &&
+            $request->filled('from_date') &&
+            $request->filled('to_date')
+        ) {
+            return [
+                Carbon::parse($request->from_date)->startOfDay(),
+                Carbon::parse($request->to_date)->endOfDay(),
+            ];
+        }
+
+        // ✅ Preset ranges
+        return match ($range) {
+            'day'  => [Carbon::today(), Carbon::now()],
+            'week' => [Carbon::now()->startOfWeek(), Carbon::now()],
+            'year' => [Carbon::now()->startOfYear(), Carbon::now()],
+            default => [Carbon::now()->startOfMonth(), Carbon::now()],
+        };
+    }
+
 }
