@@ -168,12 +168,59 @@ class CaseController extends Controller
 
 
 
-    public function show(CaseModel $case)
-    {
-        return response()->json([
-            'case' => $case->load(['client', 'priority', 'employees', 'allEmployees'])
-        ]);
+public function show(CaseModel $case)
+{
+    // Load all related data including logs
+    $case->load([
+        'client',
+        'priority',
+        'employees',
+        'allEmployees',
+        'logs'
+    ]);
+
+   foreach ($case->employees as $employee) {
+
+    $userId = $employee->user_id;
+
+    $accept = $case->logs
+        ->where('action', 'case_accepted')
+        ->where('user_id', $userId)
+        ->first();
+
+    $closed = $case->logs
+        ->where('action', 'closed')
+        ->where('user_id', $userId)
+        ->first();
+
+    if ($closed) {
+        $employee->case_status = 'closed';
+    } elseif ($accept) {
+        $employee->case_status = 'accepted';
+    } else {
+        $employee->case_status = 'pending';
     }
+
+    $employee->accepted_at = $accept?->created_at;
+    $employee->closed_at   = $closed?->created_at;
+    $employee->timeline = $case->logs
+    ->whereIn('action', ['case_accepted', 'closed'])
+    ->where('user_id', $employee->user_id)
+    ->sortBy('created_at')
+    ->values()   // important for Vue
+    ->map(function($log) {
+        return [
+            'action' => $log->action,
+            'time'   => $log->created_at
+        ];
+    });
+
+}
+
+
+    return response()->json(['case' => $case]);
+}
+
 
 public function update(Request $request, CaseModel $case)
 {

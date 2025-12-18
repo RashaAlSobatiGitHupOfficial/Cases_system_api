@@ -15,7 +15,15 @@ public function casesReport(Request $request)
 {
     $query = $this->buildCasesQuery($request);
 
-    return $query->paginate(10);
+$paginated = $query->paginate(10);
+
+$paginated->getCollection()->transform(function ($case) {
+    $firstAcceptance = $case->logs->first()?->created_at;
+    $case->accepted_at = $firstAcceptance;
+    return $case;
+});
+
+return $paginated;
 }
 
 
@@ -57,6 +65,10 @@ public function casesReport(Request $request)
     {
         $query = CaseModel::query()
             ->with(['priority', 'client', 'employees']);
+        $query->with(['logs' => function ($q) {
+            $q->where('action', 'case_accepted')
+            ->orderBy('created_at', 'asc');
+        }]);
 
         if ($request->search) {
             $query->where(function($q) use ($request) {

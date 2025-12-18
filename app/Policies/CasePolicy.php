@@ -24,31 +24,32 @@ class CasePolicy
         return true;
     }
 
-    public function accept(User $user, CaseModel $case)
-    {
-        if (!$user->hasPermission('cases.accept')) return false;
-        if (!$user->employee) return false;
+  public function accept(User $user, CaseModel $case)
+{
+    if (!$user->hasPermission('cases.accept')) return false;
+    if (!$user->employee) return false;
 
-        // must be assigned
-        $assigned = $case->employees()
-            ->where('employee_id', $user->employee->id)
-            ->exists();
-        if (!$assigned) return false;
+    // Must be assigned
+    $assigned = $case->employees()
+        ->where('employee_id', $user->employee->id)
+        ->exists();
+    if (!$assigned) return false;
 
-        // must be in allowed statuses
-        if (!in_array($case->status, ['assigned', 'reassigned'])) return false;
+    // Must NOT be closed
+    if ($case->status === 'closed') return false;
 
-        // someone else already accepted
-        $alreadyAccepted = $case->employees()
-            ->wherePivot('action', 'accepted')
-            ->where('employee_id', '!=', $user->employee->id)
-            ->exists();
-        if ($alreadyAccepted) return false;
+    // Must NOT be already accepted by this employee
+    $alreadyAcceptedByThisEmployee = $case->employees()
+        ->where('employee_id', $user->employee->id)
+        ->wherePivot('action', 'accepted')
+        ->exists();
 
-        return true;
+    if ($alreadyAcceptedByThisEmployee) {
+        return false; // hide accept button
     }
 
-
+    return true;
+}
 
     public function reassign(User $user, CaseModel $case)
 {
@@ -79,16 +80,27 @@ class CasePolicy
         return $user->hasPermission('cases.remove_employee');
     }
 
-    public function close(User $user, CaseModel $case)
-    {
-        if ($case->status !== 'in_progress') return false;
-
-        return $user->hasPermission('cases.close')
-            || $case->employees()
-                ->where('employee_id', $user->employee->id)
-                ->wherePivot('action', 'accepted')
-                ->exists();
+public function close(User $user, CaseModel $case)
+{
+    // الحالة يجب أن تكون in_progress
+    if ($case->status !== 'in_progress') {
+        return false;
     }
+
+    // المستخدم يجب أن يكون لديه بروفايل موظف
+    if (!$user->employee) {
+        return false;
+    }
+
+    // الموظف يجب أن يكون قد قبل الحالة
+    $acceptedByUser = $case->employees()
+        ->where('employee_id', $user->employee->id)
+        ->wherePivot('action', 'accepted')
+        ->exists();
+
+    return $acceptedByUser;
+}
+
 
 
 }
